@@ -39,7 +39,7 @@ return [
             'class' => \royfee\xshop\Platforms\Yueyan\Yueyan::class,
             'config' => [
                 'app_id' => 'dw4lKzsMotKxOpHjTd',
-                'app_secret' => 'otaxrS49J1VPjEBqjYfLtQP2jed0ITUc',
+                'app_secret' => '',
                 'auth_code' => 'x7Ot2OvoMYE5rMZS0C9KdRRJB4LRanA4',
                 'log' => [
                     'name' => 'yueyan',
