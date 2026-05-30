@@ -1,0 +1,19 @@
+{
+    "name": "royfee/xshop",
+    "autoload": {
+        "psr-4": {
+            "royfee\\xshop\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "royfee"
+        }
+    ],
+    "require": {
+        "hanson/foundation-sdk": "^5.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    }
+}
