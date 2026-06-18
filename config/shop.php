@@ -2,9 +2,10 @@
 return [
     // 默认平台
     'default' => 'taobao',
-    
+
     // 平台配置
     'platforms' => [
+		/*
         'youzan' => [
             'class' => \royfee\xshop\Platforms\Youzan\Youzan::class,
             'config' => [
@@ -35,18 +36,28 @@ return [
                 'timeout' => 30,
             ]
         ],
+		*/
         'yueyan' =>[
             'class' => \royfee\xshop\Platforms\Yueyan\Yueyan::class,
             'config' => [
                 'app_id' => 'dw4lKzsMotKxOpHjTd',
-                'app_secret' => '',
+                'app_secret' => 'otaxrS49J1VPjEBqjYfLtQP2jed0ITUc',
                 'auth_code' => 'x7Ot2OvoMYE5rMZS0C9KdRRJB4LRanA4',
+                'debug' => true, // 调试模式
                 'log' => [
                     'name' => 'yueyan',
                     'file' => __DIR__.'/yueyan.log',
                     'level'      => 'debug',
                     'permission' => 0777,
                 ]
+            ]
+        ],
+        'pdd' => [
+            'class' => \royfee\xshop\Platforms\Pinduoduo\Pinduoduo::class,
+            'config' => [
+                'client_id' => '503eaf370a914597a87a926057a41464',
+                'client_secret' => 'c327599e6b09a333f40f51940f3edd5d2da0999c',
+                'redirect_uri' => 'www.kuaidee.com/pdd_callback.php',
             ]
         ]
         /*
@@ -62,19 +73,7 @@ return [
                 'timeout' => 30,
             ]
         ],
-        'pdd' => [
-            'class' => \royfee\xshop\Platforms\Pinduoduo\Pinduoduo::class,
-            'config' => [
-                'client_id' => 'your_pdd_client_id',
-                'client_secret' => 'your_pdd_client_secret',
-                'access_token' => 'your_pdd_access_token',
-                'gateway' => 'https://gw-api.pinduoduo.com/api/router',
-                'format' => 'json',
-                'version' => 'V1',
-                'timeout' => 30,
-            ]
-        ]
-            */
+        */
     ],
 
     // 全局配置

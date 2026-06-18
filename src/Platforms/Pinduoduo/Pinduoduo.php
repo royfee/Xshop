@@ -1,33 +1,38 @@
 <?php
-namespace royfee\xshop\Platforms\Taobao;
+namespace royfee\xshop\Platforms\Pinduoduo;
 
 use royfee\xshop\Platforms\BasePlatform;
-use royfee\xshop\Platforms\Taobao\Api\Goods;
-use royfee\xshop\Platforms\Taobao\Api\Order;
-use royfee\xshop\Platforms\Taobao\Api\AfterSale;
+use royfee\xshop\Platforms\Pinduoduo\Api\AccessToken;
+use royfee\xshop\Platforms\Pinduoduo\Api\Api;
+use royfee\xshop\Platforms\Pinduoduo\Api\Order;
 
-class Taobao extends BasePlatform
+class Pinduoduo extends BasePlatform
 {
     public function getPlatformName()
     {
-        return 'taobao';
+        return 'pdd';
     }
     
     public function registerModules($pimple)
     {
-        $pimple['goods'] = function($app) {
-            return new Goods($app);
+        $pimple['access_token'] = function($app) use ($pimple) {
+            return new AccessToken(
+                $pimple->getConfig('client_id'),
+                $pimple->getConfig('client_secret'),
+                $app
+            );
         };
-        
-        $pimple['order'] = function($app) {
-            return new Order($app);
+
+        $pimple['api'] = function ($pimple) {
+            return new Api($pimple);
         };
-        
-        $pimple['after_sale'] = function($app) {
-            return new AfterSale($app);
+
+        $pimple['order'] = function ($pimple) {
+            return new Order($pimple);
         };
     }
     
+    /*
     protected function request($method, array $params = [])
     {
         // 淘宝API请求实现
@@ -58,7 +63,8 @@ class Taobao extends BasePlatform
         
         return $result;
     }
-    
+    */
+
     protected function generateSign(array $params)
     {
         ksort($params);

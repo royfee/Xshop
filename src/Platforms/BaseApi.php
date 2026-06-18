@@ -22,6 +22,6 @@ abstract class BaseApi extends AbstractAPI
      */
     protected function call($method, $params = [])
     {
-        return $this->app->request($method, $params);
+        return $this->app->api->request($method, $params);
     }
 }

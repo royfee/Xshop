@@ -1,5 +1,5 @@
 <?php
-namespace royfee\xshop\Platforms\Yueyan\Api;
+namespace royfee\xshop\Platforms\Pinduoduo\Api;
 
 use royfee\xshop\Platforms\BaseApi;
 class Order extends BaseApi
@@ -9,7 +9,8 @@ class Order extends BaseApi
      */
     public function getList(array $params = [])
     {
-        //$result = $this->call('sq.order.list.get', $params);
+        $result = $this->call('pdd.order.list.get', $params);
+exit('HuangFei');
         $result = include('mock.php');
         if($result['code'] !== '0000'){
             return $this->app->error();

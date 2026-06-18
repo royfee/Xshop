@@ -32,14 +32,14 @@ abstract class BasePlatform extends Foundation
      * 获取平台名称
      */
     abstract public function getPlatformName();
-    
+
     /**
-     * 发送请求
-     * @param string $method API方法名
-     * @param array $params 请求参数
-     * @return array
+     * 获取平台Mapper
      */
-    abstract protected function request($method, array $params = []);
+	public function getMapper(){
+		$mapper = __NAMESPACE__.'\\'.ucfirst($this->getPlatformName()).'\\Mapper\\OrderMapper';
+		return new $mapper;
+	}
     
     /**
      * 生成签名
@@ -59,5 +59,28 @@ abstract class BasePlatform extends Foundation
      */
     public function getDev(){
         return $this->config['is_dev'] ?? false;
+    }
+
+    public function getConfig(){
+        return $this->config;
+    }
+
+    /**
+     * 是否开发模式
+     */
+    public function success($data,$message = ''){
+        return [
+            'code'      =>  0,
+            'message'   =>  $message,
+            'data'      =>  $data,
+        ];
+    }
+
+    public function error($message = ''){
+        return [
+            'code'      =>  1,
+            'message'   =>  $message,
+            'data'      =>  null,
+        ];
     }
 }

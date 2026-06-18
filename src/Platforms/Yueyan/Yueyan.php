@@ -19,7 +19,7 @@ class Yueyan extends BasePlatform
             return new Order($app);
         };
     }
-    
+
     public function request($method, array $params = [])
     {
         $allParams = [
@@ -35,9 +35,8 @@ class Yueyan extends BasePlatform
         $allParams['sign'] = $this->generateSign($allParams);
 
         $response = $this->http->json($this->getUrl($method),$allParams);
-
         $result = json_decode($response->getBody(),true);
-                
+
         if ($result['code'] !== '0000') {
             throw new \Exception($result['message'] ?? '越洋[Yueyan]接口错误');
         }
