@@ -1,0 +1,23 @@
+# Dependency
+/vendor/
+/composer.lock
+
+# Logs and runtime artifacts
+*.log
+logs/
+runtime/
+
+# Local config (per-env secrets)
+/config/xshop.php
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
