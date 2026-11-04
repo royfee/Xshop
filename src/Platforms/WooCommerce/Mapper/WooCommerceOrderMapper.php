@@ -29,7 +29,7 @@ class WooCommerceOrderMapper extends AbstractMapper
         $order->platform = 'woocommerce';
         $order->rawData = $rawData;
 
-        $order->orderId = (string) $this->get($rawData, 'id');
+        $order->orderNo = (string) $this->get($rawData, 'id');
         $order->platformOrderNo = (string) ($this->get($rawData, 'order_key') ?: $this->get($rawData, 'id'));
         $order->shopId = '';
         $order->buyerId = (string) $this->get($rawData, 'customer_id');
@@ -163,14 +163,15 @@ class WooCommerceOrderMapper extends AbstractMapper
     {
         $item = new XOrderItem();
         $item->goodsId = (string) $this->get($rawItem, 'product_id');
-        $item->skuId = (string) $this->get($rawItem, 'variation_id');
+        $item->sku = (string) $this->get($rawItem, 'variation_id');
         $item->goodsName = $this->get($rawItem, 'name');
         $item->skuSpec = $this->extractSkuSpec($rawItem);
         $item->goodsImage = '';
         $item->quantity = (int) $this->get($rawItem, 'quantity', 0);
         $item->price = $this->toFloat($this->get($rawItem, 'price'));
         $item->subtotal = $this->toFloat($this->get($rawItem, 'subtotal'));
-        $item->outerId = $this->get($rawItem, 'sku');
+        $item->subtotalTax = $this->toFloat($this->get($rawItem, 'subtotal_tax'));
+        $item->outerNo = $this->get($rawItem, 'sku');
 
         return $item;
     }

@@ -10,8 +10,8 @@ class XOrderItem
     /** @var string 商品ID */
     public $goodsId;
 
-    /** @var string SKU ID */
-    public $skuId;
+    /** @var string SKU */
+    public $sku;
 
     /** @var string 商品名称 */
     public $goodsName;
@@ -31,8 +31,11 @@ class XOrderItem
     /** @var float 小计金额 */
     public $subtotal;
 
+    /** @var float 小计税费 */
+    public $subtotalTax;
+
     /** @var string 外部编码 */
-    public $outerId;
+    public $outerNo;
 
     /**
      * 转换为数组
@@ -42,14 +45,15 @@ class XOrderItem
     {
         return [
             'goodsId' => $this->goodsId,
-            'skuId' => $this->skuId,
+            'sku' => $this->sku,
             'goodsName' => $this->goodsName,
             'skuSpec' => $this->skuSpec,
             'goodsImage' => $this->goodsImage,
             'quantity' => $this->quantity,
             'price' => $this->price,
             'subtotal' => $this->subtotal,
-            'outerId' => $this->outerId,
+            'subtotal_tax' => $this->subtotalTax,
+            'outerNo' => $this->outerNo,
         ];
     }
 

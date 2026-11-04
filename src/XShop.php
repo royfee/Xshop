@@ -61,7 +61,7 @@ class XShop
     {
         $platformConfig = $this->container->getPlatformConfig($name);
 
-        if (empty($platformConfig) || !($platformConfig['enabled'] ?? false)) {
+        if (empty($platformConfig)) {
             throw new \RuntimeException("Platform not configured or disabled: {$name}");
         }
 

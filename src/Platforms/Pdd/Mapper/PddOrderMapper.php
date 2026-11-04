@@ -31,7 +31,7 @@ class PddOrderMapper extends AbstractMapper
         $order->rawData = $rawData;
 
         // 基础信息
-        $order->orderId = $this->get($rawData, 'order_sn');
+        $order->orderNo = $this->get($rawData, 'order_sn');
         $order->platformOrderNo = $this->get($rawData, 'order_sn');
         $order->shopId = $this->get($rawData, 'mall_id');
         $order->buyerId = $this->get($rawData, 'buyer_id');
@@ -90,14 +90,15 @@ class PddOrderMapper extends AbstractMapper
     {
         $item = new XOrderItem();
         $item->goodsId = $this->get($rawItem, 'goods_id');
-        $item->skuId = $this->get($rawItem, 'sku_id');
+        $item->sku = $this->get($rawItem, 'sku_id');
         $item->goodsName = $this->get($rawItem, 'goods_name');
         $item->skuSpec = $this->get($rawItem, 'goods_spec');
         $item->goodsImage = $this->get($rawItem, 'goods_img');
         $item->quantity = (int) $this->get($rawItem, 'goods_count', 0);
         $item->price = $this->fenToYuan($this->get($rawItem, 'goods_price'));
         $item->subtotal = $this->fenToYuan($this->get($rawItem, 'goods_amount'));
-        $item->outerId = $this->get($rawItem, 'outer_id');
+        $item->subtotalTax = 0;
+        $item->outerNo = $this->get($rawItem, 'outer_id');
 
         return $item;
     }

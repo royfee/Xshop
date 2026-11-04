@@ -8,8 +8,8 @@ namespace Royfee\XShop\Data;
  */
 class XOrder
 {
-    /** @var string 订单ID */
-    public $orderId;
+    /** @var string 订单号 */
+    public $orderNo;
 
     /** @var string 平台订单号 */
     public $platformOrderNo;
@@ -102,7 +102,7 @@ class XOrder
     public function toArray(): array
     {
         return [
-            'orderId' => $this->orderId,
+            'orderNo' => $this->orderNo,
             'platformOrderNo' => $this->platformOrderNo,
             'platform' => $this->platform,
             'shopId' => $this->shopId,
