@@ -138,7 +138,12 @@ class XShop
 
     public static function getRegisteredPlatforms(): array
     {
-        return array_keys(self::$platforms);
+        $result = [];
+        foreach (self::$platforms as $class) {
+            $instance = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+            $result[$instance->getCode()] = $instance->getName();
+        }
+        return $result;
     }
 
     /**
