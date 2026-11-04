@@ -4,6 +4,7 @@ namespace Royfee\XShop;
 
 use Royfee\XShop\Contracts\PlatformInterface;
 use Royfee\XShop\Platforms\Pdd\Pdd;
+use Royfee\XShop\Platforms\WooCommerce\WooCommerce;
 
 /**
  * XShop 核心工厂类
@@ -21,6 +22,7 @@ class XShop
     /** @var array 已注册的平台 */
     protected static $platforms = [
         'pdd' => Pdd::class,
+        'woocommerce' => WooCommerce::class,
     ];
 
     /** @var array 平台实例缓存 [instanceKey => instance] */
@@ -104,6 +106,21 @@ class XShop
     public function pdd(array $config = []): Pdd
     {
         return $this->platform('pdd', $config);
+    }
+
+    /**
+     * 获取 WooCommerce 平台实例
+     *
+     * 配置示例:
+     *   $wc = $xshop->woocommerce();
+     *   $orders = $wc->order()->getList(['page' => 1, 'per_page' => 20, 'status' => 'processing']);
+     *
+     * @param array $config 覆盖配置
+     * @return WooCommerce
+     */
+    public function woocommerce(array $config = []): WooCommerce
+    {
+        return $this->platform('woocommerce', $config);
     }
 
     /**

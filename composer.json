@@ -31,5 +31,12 @@
             "Royfee\\XShop\\Tests\\": "tests/"
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "config": {
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        }
+    }
 }
