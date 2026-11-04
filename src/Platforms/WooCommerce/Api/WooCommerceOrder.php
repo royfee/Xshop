@@ -5,16 +5,11 @@ namespace Royfee\XShop\Platforms\WooCommerce\Api;
 use Royfee\XShop\Contracts\OrderInterface;
 use Royfee\XShop\Contracts\HttpClientInterface;
 use Royfee\XShop\Platforms\WooCommerce\Auth\WooCommerceAuth;
+use Royfee\XShop\Platforms\WooCommerce\WooCommerce;
 use Royfee\XShop\Platforms\WooCommerce\Mapper\WooCommerceOrderMapper;
 use Royfee\XShop\Data\XOrder;
 use Psr\Log\LoggerInterface;
 
-/**
- * WooCommerce Orders API
- *
- * REST API v3: GET {site_url}/wp-json/wc/v3/orders
- * Authentication: HTTP Basic Auth (consumer_key:consumer_secret)
- */
 class WooCommerceOrder implements OrderInterface
 {
     protected $config;
@@ -22,18 +17,21 @@ class WooCommerceOrder implements OrderInterface
     protected $auth;
     protected $logger;
     protected $mapper;
+    protected $platform;
 
     public function __construct(
         array $config,
         HttpClientInterface $http,
         WooCommerceAuth $auth,
-        ?LoggerInterface $logger = null
+        ?LoggerInterface $logger = null,
+        ?WooCommerce $platform = null
     ) {
         $this->config = $config;
         $this->http = $http;
         $this->auth = $auth;
         $this->logger = $logger;
         $this->mapper = new WooCommerceOrderMapper();
+        $this->platform = $platform;
     }
 
     protected function getApiUrl(string $endpoint = 'orders'): string
@@ -52,30 +50,12 @@ class WooCommerceOrder implements OrderInterface
         ];
     }
 
-    /**
-     * GET /wp-json/wc/v3/orders
-     *
-     * Supported params:
-     * - page int (default 1)
-     * - per_page int (default 10, max 100)
-     * - search string
-     * - after string (ISO8601, e.g. 2024-01-01T00:00:00)
-     * - before string (ISO8601)
-     * - exclude array of ids
-     * - include array of ids
-     * - offset int
-     * - order string (asc/desc, default desc)
-     * - orderby string (date/id/include/title/slug, default date)
-     * - status string (pending|processing|on-hold|completed|cancelled|refunded|failed|trash|any)
-     * - customer int
-     * - product int
-     * - dp int (decimal points, default 2)
-     *
-     * @param array $params
-     * @return XOrder[]
-     */
     public function getList(array $params = []): array
     {
+        if ($this->platform) {
+            $params = $this->platform->mapParams($params);
+        }
+        
         $queryParams = $this->buildListParams($params);
         $url = $this->getApiUrl('orders');
         $headers = $this->getAuthHeaders();
@@ -107,12 +87,6 @@ class WooCommerceOrder implements OrderInterface
         return $this->mapper->mapList(array_values($orders));
     }
 
-    /**
-     * GET /wp-json/wc/v3/orders/{id}
-     *
-     * @param string $orderId
-     * @return XOrder|null
-     */
     public function getDetail(string $orderId): ?XOrder
     {
         $url = $this->getApiUrl("orders/{$orderId}");
@@ -143,12 +117,6 @@ class WooCommerceOrder implements OrderInterface
         return $this->mapper->map($response);
     }
 
-    /**
-     * GET /wp-json/wc/v3/orders/{id} - shipping_lines only
-     *
-     * @param string $orderId
-     * @return array
-     */
     public function getLogistics(string $orderId): array
     {
         $order = $this->getDetail($orderId);
@@ -178,13 +146,6 @@ class WooCommerceOrder implements OrderInterface
         return $result;
     }
 
-    /**
-     * PUT /wp-json/wc/v3/orders/{id} - update status / tracking
-     *
-     * @param string $orderId
-     * @param array $params keys: status, tracking_number, tracking_company
-     * @return bool
-     */
     public function send(string $orderId, array $params): bool
     {
         $url = $this->getApiUrl("orders/{$orderId}");
@@ -236,9 +197,6 @@ class WooCommerceOrder implements OrderInterface
         return isset($response['id']);
     }
 
-    /**
-     * Map XShop-style params to WooCommerce API query params
-     */
     protected function buildListParams(array $params): array
     {
         $allowed = [

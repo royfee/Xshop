@@ -14,10 +14,10 @@ interface PlatformInterface
     public function getName(): string;
 
     /**
-     * 获取平台标识
+     * 获取平台代码
      * @return string
      */
-    public function getIdentifier(): string;
+    public function getCode(): string;
 
     /**
      * 获取认证模块

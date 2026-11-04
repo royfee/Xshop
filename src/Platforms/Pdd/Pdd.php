@@ -2,12 +2,10 @@
 
 namespace Royfee\XShop\Platforms\Pdd;
 
-use Royfee\XShop\Contracts\PlatformInterface;
 use Royfee\XShop\Contracts\AuthInterface;
 use Royfee\XShop\Contracts\OrderInterface;
 use Royfee\XShop\Contracts\GoodsInterface;
-use Royfee\XShop\Contracts\HttpClientInterface;
-use Royfee\XShop\Container;
+use Royfee\XShop\Platforms\AbstractPlatform;
 use Royfee\XShop\Platforms\Pdd\Auth\PddAuth;
 use Royfee\XShop\Platforms\Pdd\Api\PddOrder;
 use Royfee\XShop\Platforms\Pdd\Api\PddGoods;
@@ -17,14 +15,8 @@ use Royfee\XShop\Platforms\Pdd\Api\PddGoods;
  * 
  * 统一注入 HttpClientInterface 到 Auth 和 API 模块
  */
-class Pdd implements PlatformInterface
+class Pdd extends AbstractPlatform
 {
-    /** @var array 平台配置 */
-    protected $config;
-
-    /** @var Container 服务容器 */
-    protected $container;
-
     /** @var PddAuth|null 认证模块 */
     protected $authInstance = null;
 
@@ -34,21 +26,35 @@ class Pdd implements PlatformInterface
     /** @var PddGoods|null 商品模块 */
     protected $goodsInstance = null;
 
-    /** @var HttpClientInterface|null HTTP客户端 */
-    protected $httpInstance = null;
+    /**
+     * 参数映射：[pdd参数 => xshop参数]
+     */
+    protected $paramMap = [
+        'page' => 'page',
+        'page_size' => 'page_size',
+        'status' => 'order_status',
+        'start_time' => 'start_confirm_time',
+        'end_time' => 'end_confirm_time',
+    ];
 
-    public function __construct(array $config, Container $container)
-    {
-        $this->config = $config;
-        $this->container = $container;
-    }
+    /**
+     * 状态映射：[xshop状态 => pdd状态]
+     */
+    protected $statusMap = [
+        'pending' => 1,
+        'paid' => 1,
+        'shipped' => 2,
+        'completed' => 5,
+        'cancelled' => 6,
+        'refunded' => 4,
+    ];
 
     public function getName(): string
     {
         return '拼多多';
     }
 
-    public function getIdentifier(): string
+    public function getCode(): string
     {
         return 'pdd';
     }
@@ -64,8 +70,9 @@ class Pdd implements PlatformInterface
             $this->authInstance = new PddAuth(
                 $this->config,
                 $this->container->get('cache'),
-                $this->http(),  // 注入统一 HTTP 客户端
-                $this->container->get('logger')
+                $this->http(),
+                $this->container->get('logger'),
+                $this
             );
         }
         return $this->authInstance;
@@ -81,7 +88,8 @@ class Pdd implements PlatformInterface
                 $this->config,
                 $this->http(),
                 $this->auth(),
-                $this->container->get('logger')
+                $this->container->get('logger'),
+                $this
             );
         }
         return $this->orderInstance;
@@ -97,30 +105,57 @@ class Pdd implements PlatformInterface
                 $this->config,
                 $this->http(),
                 $this->auth(),
-                $this->container->get('logger')
+                $this->container->get('logger'),
+                $this
             );
         }
         return $this->goodsInstance;
     }
 
     /**
-     * 获取HTTP客户端 (惰性加载)
+     * 获取拼多多平台配置参数 Schema
+     *
+     * @return array 配置参数定义
      */
-    public function http(): HttpClientInterface
+    public static function getConfigSchema(): array
     {
-        if ($this->httpInstance === null) {
-            $this->httpInstance = $this->container->get('http');
-        }
-        return $this->httpInstance;
-    }
-
-    public function getConfig(): array
-    {
-        return $this->config;
-    }
-
-    public function getContainer(): Container
-    {
-        return $this->container;
+        return [
+            'client_id' => [
+                'type' => 'string',
+                'required' => true,
+                'description' => '拼多多开放平台应用 ID',
+                'example' => '12345678',
+            ],
+            'client_secret' => [
+                'type' => 'string',
+                'required' => true,
+                'description' => '拼多多开放平台应用密钥',
+                'example' => 'your_client_secret',
+            ],
+            'redirect_uri' => [
+                'type' => 'string',
+                'required' => false,
+                'description' => 'OAuth 授权回调地址',
+                'example' => 'https://your-site.com/callback',
+            ],
+            'api_url' => [
+                'type' => 'string',
+                'required' => false,
+                'default' => 'https://gw-api.pinduoduo.com/api/router',
+                'description' => '拼多多 API 接口地址',
+            ],
+            'auth_url' => [
+                'type' => 'string',
+                'required' => false,
+                'default' => 'https://open-api.pinduoduo.com/oauth/token',
+                'description' => '拼多多 OAuth 授权地址',
+            ],
+            'mall_id' => [
+                'type' => 'string',
+                'required' => false,
+                'description' => '店铺 ID (授权后自动获取)',
+                'example' => '4567890',
+            ],
+        ];
     }
 }

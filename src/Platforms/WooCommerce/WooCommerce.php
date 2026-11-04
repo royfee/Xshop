@@ -2,35 +2,47 @@
 
 namespace Royfee\XShop\Platforms\WooCommerce;
 
-use Royfee\XShop\Contracts\PlatformInterface;
 use Royfee\XShop\Contracts\AuthInterface;
 use Royfee\XShop\Contracts\OrderInterface;
 use Royfee\XShop\Contracts\GoodsInterface;
-use Royfee\XShop\Contracts\HttpClientInterface;
-use Royfee\XShop\Container;
+use Royfee\XShop\Platforms\AbstractPlatform;
 use Royfee\XShop\Platforms\WooCommerce\Auth\WooCommerceAuth;
 use Royfee\XShop\Platforms\WooCommerce\Api\WooCommerceOrder;
 
-class WooCommerce implements PlatformInterface
+class WooCommerce extends AbstractPlatform
 {
-    protected $config;
-    protected $container;
     protected $authInstance = null;
     protected $orderInstance = null;
-    protected $httpInstance = null;
 
-    public function __construct(array $config, Container $container)
-    {
-        $this->config = $config;
-        $this->container = $container;
-    }
+    /**
+     * 参数映射：[wc参数 => xshop参数]
+     */
+    protected $paramMap = [
+        'page' => 'page',
+        'page_size' => 'per_page',
+        'status' => 'status',
+        'start_time' => 'after',
+        'end_time' => 'before',
+    ];
+
+    /**
+     * 状态映射：[xshop状态 => wc状态]
+     */
+    protected $statusMap = [
+        'pending' => 'pending',
+        'paid' => 'processing',
+        'shipped' => 'processing',
+        'completed' => 'completed',
+        'cancelled' => 'cancelled',
+        'refunded' => 'refunded',
+    ];
 
     public function getName(): string
     {
         return 'WooCommerce';
     }
 
-    public function getIdentifier(): string
+    public function getCode(): string
     {
         return 'woocommerce';
     }
@@ -40,7 +52,8 @@ class WooCommerce implements PlatformInterface
         if ($this->authInstance === null) {
             $this->authInstance = new WooCommerceAuth(
                 $this->config,
-                $this->container->get('logger')
+                $this->container->get('logger'),
+                $this
             );
         }
         return $this->authInstance;
@@ -53,7 +66,8 @@ class WooCommerce implements PlatformInterface
                 $this->config,
                 $this->http(),
                 $this->auth(),
-                $this->container->get('logger')
+                $this->container->get('logger'),
+                $this
             );
         }
         return $this->orderInstance;
@@ -64,21 +78,32 @@ class WooCommerce implements PlatformInterface
         throw new \RuntimeException('WooCommerce goods module is not implemented yet');
     }
 
-    public function http(): HttpClientInterface
+    /**
+     * 获取 WooCommerce 平台配置参数 Schema
+     *
+     * @return array 配置参数定义
+     */
+    public static function getConfigSchema(): array
     {
-        if ($this->httpInstance === null) {
-            $this->httpInstance = $this->container->get('http');
-        }
-        return $this->httpInstance;
-    }
-
-    public function getConfig(): array
-    {
-        return $this->config;
-    }
-
-    public function getContainer(): Container
-    {
-        return $this->container;
+        return [
+            'site_url' => [
+                'type' => 'string',
+                'required' => true,
+                'description' => 'WooCommerce 站点地址',
+                'example' => 'https://your-site.com',
+            ],
+            'consumer_key' => [
+                'type' => 'string',
+                'required' => true,
+                'description' => 'REST API Consumer Key',
+                'example' => 'ck_xxxxxxxx',
+            ],
+            'consumer_secret' => [
+                'type' => 'string',
+                'required' => true,
+                'description' => 'REST API Consumer Secret',
+                'example' => 'cs_xxxxxxxx',
+            ]
+        ];
     }
 }

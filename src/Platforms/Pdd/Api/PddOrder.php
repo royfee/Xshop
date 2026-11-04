@@ -5,6 +5,7 @@ namespace Royfee\XShop\Platforms\Pdd\Api;
 use Royfee\XShop\Contracts\OrderInterface;
 use Royfee\XShop\Contracts\HttpClientInterface;
 use Royfee\XShop\Platforms\Pdd\Auth\PddAuth;
+use Royfee\XShop\Platforms\Pdd\Pdd;
 use Royfee\XShop\Platforms\Pdd\Mapper\PddOrderMapper;
 use Royfee\XShop\Data\XOrder;
 use Psr\Log\LoggerInterface;
@@ -22,14 +23,16 @@ class PddOrder implements OrderInterface
     protected $auth;
     protected $logger;
     protected $mapper;
+    protected $platform;
 
-    public function __construct(array $config, HttpClientInterface $http, PddAuth $auth, ?LoggerInterface $logger = null)
+    public function __construct(array $config, HttpClientInterface $http, PddAuth $auth, ?LoggerInterface $logger = null, ?Pdd $platform = null)
     {
         $this->config = $config;
         $this->http = $http;
         $this->auth = $auth;
         $this->logger = $logger;
         $this->mapper = new PddOrderMapper();
+        $this->platform = $platform;
     }
 
     /**
@@ -115,7 +118,7 @@ class PddOrder implements OrderInterface
      */
     protected function decodeUnicode(string $str): string
     {
-        return preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', function ($matches) {
+        return preg_replace_callback('/\\u([0-9a-fA-F]{4})/', function ($matches) {
             return mb_convert_encoding(pack('H*', $matches[1]), 'UTF-8', 'UCS-2BE');
         }, $str);
     }
@@ -138,6 +141,11 @@ class PddOrder implements OrderInterface
 
     public function getList(array $params = []): array
     {
+        // 使用平台类做参数映射
+        if ($this->platform) {
+            $params = $this->platform->mapParams($params);
+        }
+        
         $response = $this->request('pdd.order.number.list.get', $params);
         $orders = $response['order_list_get_response']['order_list'] ?? [];
         return $this->mapper->mapList($orders);

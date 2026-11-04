@@ -141,6 +141,46 @@ class XShop
         return array_keys(self::$platforms);
     }
 
+    /**
+     * 获取指定平台的配置参数 Schema
+     *
+     * @param string $name 平台标识
+     * @return array 配置参数定义
+     * @throws \RuntimeException 平台未注册时抛出
+     */
+    public static function getPlatformConfigSchema(string $name): array
+    {
+        if (!isset(self::$platforms[$name])) {
+            throw new \RuntimeException("Platform not registered: {$name}");
+        }
+
+        $class = self::$platforms[$name];
+
+        if (!method_exists($class, 'getConfigSchema')) {
+            throw new \RuntimeException("Platform {$name} does not support config schema");
+        }
+
+        return $class::getConfigSchema();
+    }
+
+    /**
+     * 获取所有已注册平台的配置参数 Schema
+     *
+     * @return array [平台标识 => 配置参数列表]
+     */
+    public static function getAllConfigSchemas(): array
+    {
+        $schemas = [];
+
+        foreach (self::$platforms as $name => $class) {
+            if (method_exists($class, 'getConfigSchema')) {
+                $schemas[$name] = $class::getConfigSchema();
+            }
+        }
+
+        return $schemas;
+    }
+
     public function getInstances(): array
     {
         return array_keys($this->platformInstances);
