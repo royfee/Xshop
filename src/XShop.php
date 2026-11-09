@@ -5,6 +5,7 @@ namespace Royfee\XShop;
 use Royfee\XShop\Contracts\PlatformInterface;
 use Royfee\XShop\Platforms\Pdd\Pdd;
 use Royfee\XShop\Platforms\WooCommerce\WooCommerce;
+use Royfee\XShop\Platforms\HKTVmall\HKTVmall;
 
 /**
  * XShop 核心工厂类
@@ -23,6 +24,7 @@ class XShop
     protected static $platforms = [
         'pdd' => Pdd::class,
         'woocommerce' => WooCommerce::class,
+        'hktvmall' => HKTVmall::class,
     ];
 
     /** @var array 平台实例缓存 [instanceKey => instance] */
@@ -121,6 +123,26 @@ class XShop
     public function woocommerce(array $config = []): WooCommerce
     {
         return $this->platform('woocommerce', $config);
+    }
+
+    /**
+     * 获取 HKTVmall 平台实例
+     *
+     * 配置示例:
+     *   $hktv = $xshop->hktvmall();
+     *   $orders = $hktv->order()->getList([
+     *       'orderDateStart' => '2025-10-01 00:00:00',
+     *       'orderDateEnd' => '2025-10-31 23:59:59',
+     *       'page' => 1,
+     *       'pageSize' => 10,
+     *   ]);
+     *
+     * @param array $config 覆盖配置
+     * @return HKTVmall
+     */
+    public function hktvmall(array $config = []): HKTVmall
+    {
+        return $this->platform('hktvmall', $config);
     }
 
     /**
