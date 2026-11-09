@@ -144,14 +144,60 @@ class HKTVmallAuth implements AuthInterface
             throw new \RuntimeException('Private key is not configured for HKTVmall');
         }
 
+        // 如果是文件路径，读取文件内容
         if (file_exists($key)) {
             $content = file_get_contents($key);
             if ($content === false) {
                 throw new \RuntimeException("Failed to read private key file: {$key}");
             }
-            return $content;
+            $key = $content;
         }
 
+        // 处理没有换行的私钥
+        $key = $this->normalizePrivateKey($key);
+
+        return $key;
+    }
+
+    /**
+     * 标准化私钥格式，确保符合 PEM 要求
+     * 处理情况：
+     * 1. 纯 base64 内容（无 BEGIN/END 标记）
+     * 2. 有标记但没有换行
+     * 3. 字面量 \n 需要转换为真实换行
+     */
+    protected function normalizePrivateKey(string $key): string
+    {
+        // 先将字面量 \n 转换为真实换行
+        $key = str_replace('\\n', "\n", $key);
+
+        // 去除首尾空白
+        $key = trim($key);
+
+        // 检查是否包含 BEGIN 标记
+        $hasBegin = strpos($key, '-----BEGIN') !== false;
+        $hasEnd = strpos($key, '-----END') !== false;
+
+        if (!$hasBegin && !$hasEnd) {
+            // 纯 base64 内容，需要添加标记并格式化
+            $base64Content = preg_replace('/\s+/', '', $key);
+            $wrapped = wordwrap($base64Content, 64, "\n", true);
+            return "-----BEGIN RSA PRIVATE KEY-----\n{$wrapped}\n-----END RSA PRIVATE KEY-----";
+        }
+
+        if ($hasBegin && $hasEnd) {
+            // 有标记但可能格式不对，提取中间内容重新格式化
+            if (preg_match('/-----BEGIN[^-]+-----(.+)-----END[^-]+-----/s', $key, $matches)) {
+                $base64Content = preg_replace('/\s+/', '', $matches[1]);
+                $wrapped = wordwrap($base64Content, 64, "\n", true);
+                // 保留原始的 BEGIN 标记类型
+                preg_match('/-----BEGIN ([^-]+)-----/', $key, $typeMatch);
+                $type = $typeMatch[1] ?? 'RSA PRIVATE KEY';
+                return "-----BEGIN {$type}-----\n{$wrapped}\n-----END {$type}-----";
+            }
+        }
+
+        // 其他情况，直接返回
         return $key;
     }
 

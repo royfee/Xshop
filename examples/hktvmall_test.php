@@ -21,7 +21,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Royfee\XShop\XShop;
 
 // ========== 配置 ==========
-
 $config = [
     'debug' => true,
     'logger' => [

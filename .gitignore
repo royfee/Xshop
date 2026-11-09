@@ -3,4 +3,5 @@ composer.phar
 /config/
 /.idea/
 /.qoder
+/pri_test
 composer.lock
