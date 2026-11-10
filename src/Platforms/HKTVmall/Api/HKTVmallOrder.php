@@ -53,6 +53,9 @@ class HKTVmallOrder implements OrderInterface
         return [
             'Content-Type'  => 'application/json',
             'Accept'        => 'application/json',
+            // HKTVmall 网关对 User-Agent 中含 "curl/" 的请求直接返回 404，
+            // 而 Guzzle 6 的默认 UA 带有该片段，故显式指定
+            'User-Agent'    => 'XShop-HKTVmall/1.0',
             'x-auth-token'  => $this->auth->getJwtToken(),
             'storeCode'     => $this->config['store_code'] ?? '',
             'platformCode'  => $this->config['platform_code'] ?? 'HKTV',

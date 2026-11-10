@@ -15,6 +15,15 @@ use Psr\Log\LoggerInterface;
  */
 class HttpClient implements HttpClientInterface
 {
+    /**
+     * 默认 User-Agent。
+     *
+     * Guzzle 6 的默认 UA 带有 "curl/x.y.z" 片段，部分平台网关（如 HKTVmall）会
+     * 据此直接返回 404，因此必须显式声明，不能依赖 Guzzle 默认值。
+     * 请求方传入的 User-Agent 优先级更高。
+     */
+    public const USER_AGENT = 'XShop-Client/1.0';
+
     /** @var Client Guzzle客户端 */
     protected $client;
 
@@ -48,6 +57,7 @@ class HttpClient implements HttpClientInterface
             'timeout' => $this->timeout,
             'connect_timeout' => $this->connectTimeout,
             'http_errors' => false,
+            'headers' => ['User-Agent' => self::USER_AGENT],
         ]);
     }
 

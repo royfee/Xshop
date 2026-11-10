@@ -10,16 +10,20 @@ use Psr\Log\LoggerInterface;
  * HKTVmall RS256 JWT Authentication
  *
  * Generates JWT tokens signed with RSA private key.
- * Token must be refreshed every 30 minutes (iat timestamp).
- * Cache key: token_hktvmall_{api_key_prefix}
+ * 网关只接受 iat 在过去 30 分钟内的 token（实测 25 分钟可过、30 分钟 401），
+ * 故 TTL 留出安全边际，读取时再校验一次 expires_at。
+ * Cache key: token_hktvmall_{sha1(api_key|private_key)前16位}
  */
 class HKTVmallAuth implements AuthInterface
 {
+    /** 距过期不足该秒数时视为需要重新签发 */
+    const REFRESH_MARGIN = 120;
+
     protected $config;
     protected $cache;
     protected $logger;
     protected $platform = 'hktvmall';
-    protected $tokenTtl = 1500;
+    protected $tokenTtl = 1200;
 
     public function __construct(
         array $config,
@@ -34,18 +38,25 @@ class HKTVmallAuth implements AuthInterface
     protected function buildCacheKey(): string
     {
         $apiKey = $this->config['api_key'] ?? 'default';
-        $prefix = substr($apiKey, 0, 8);
-        return "token_{$this->platform}_{$prefix}";
+        // 网关按 iat 校验签名，凭证或私钥任一变化都必须重新签发，不能复用缓存
+        $fingerprint = substr(sha1($apiKey . '|' . ($this->config['private_key'] ?? '')), 0, 16);
+        return "token_{$this->platform}_{$fingerprint}";
+    }
+
+    protected function readCachedToken(): ?array
+    {
+        $cached = $this->cache->get($this->buildCacheKey());
+        if (is_array($cached) && isset($cached['jwt'], $cached['expires_at'])
+            && $cached['expires_at'] > time() + self::REFRESH_MARGIN) {
+            return $cached;
+        }
+
+        return null;
     }
 
     public function getToken(?string $code = null): array
     {
-        $cached = $this->cache->get($this->buildCacheKey());
-        if ($cached && is_array($cached) && isset($cached['jwt'])) {
-            return $cached;
-        }
-
-        return $this->generateAndCacheToken();
+        return $this->readCachedToken() ?? $this->generateAndCacheToken();
     }
 
     public function refreshToken(string $refreshToken): array
@@ -60,8 +71,7 @@ class HKTVmallAuth implements AuthInterface
 
     public function isTokenValid(): bool
     {
-        $cached = $this->cache->get($this->buildCacheKey());
-        return $cached && is_array($cached) && isset($cached['jwt']);
+        return $this->readCachedToken() !== null;
     }
 
     public function getJwtToken(): string
