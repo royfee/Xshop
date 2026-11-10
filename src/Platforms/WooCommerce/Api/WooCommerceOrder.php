@@ -2,36 +2,34 @@
 
 namespace Royfee\XShop\Platforms\WooCommerce\Api;
 
-use Royfee\XShop\Contracts\OrderInterface;
-use Royfee\XShop\Contracts\HttpClientInterface;
-use Royfee\XShop\Platforms\WooCommerce\Auth\WooCommerceAuth;
-use Royfee\XShop\Platforms\WooCommerce\WooCommerce;
-use Royfee\XShop\Platforms\WooCommerce\Mapper\WooCommerceOrderMapper;
-use Royfee\XShop\Data\XOrder;
 use Psr\Log\LoggerInterface;
+use Royfee\XShop\Contracts\HttpClientInterface;
+use Royfee\XShop\Contracts\OrderInterface;
+use Royfee\XShop\Contracts\PlatformInterface;
+use Royfee\XShop\Data\XOrder;
+use Royfee\XShop\Mapper\AbstractMapper;
+use Royfee\XShop\Platforms\AbstractApiResource;
+use Royfee\XShop\Platforms\WooCommerce\Auth\WooCommerceAuth;
+use Royfee\XShop\Platforms\WooCommerce\Mapper\WooCommerceOrderMapper;
 
-class WooCommerceOrder implements OrderInterface
+/**
+ * WooCommerce 订单接口 (REST API v3, HTTP Basic Auth)
+ */
+class WooCommerceOrder extends AbstractApiResource implements OrderInterface
 {
-    protected $config;
-    protected $http;
-    protected $auth;
-    protected $logger;
-    protected $mapper;
-    protected $platform;
-
     public function __construct(
         array $config,
         HttpClientInterface $http,
         WooCommerceAuth $auth,
         ?LoggerInterface $logger = null,
-        ?WooCommerce $platform = null
+        ?PlatformInterface $platform = null
     ) {
-        $this->config = $config;
-        $this->http = $http;
-        $this->auth = $auth;
-        $this->logger = $logger;
-        $this->mapper = new WooCommerceOrderMapper();
-        $this->platform = $platform;
+        parent::__construct($config, $http, $auth, $logger, $platform);
+    }
+
+    protected function createMapper(): AbstractMapper
+    {
+        return new WooCommerceOrderMapper();
     }
 
     protected function getApiUrl(string $endpoint = 'orders'): string
@@ -52,31 +50,23 @@ class WooCommerceOrder implements OrderInterface
 
     public function getList(array $params = []): array
     {
-        if ($this->platform) {
-            $params = $this->platform->mapParams($params);
-        }
-        
-        $queryParams = $this->buildListParams($params);
+        $queryParams = $this->buildListParams($this->prepareParams($params));
         $url = $this->getApiUrl('orders');
         $headers = $this->getAuthHeaders();
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Request', [
-                'method' => 'GET',
-                'url' => $url,
-                'params' => $queryParams,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Request', [
+            'method' => 'GET',
+            'url' => $url,
+            'params' => $queryParams,
+        ]);
 
         $response = $this->http->get($url, $queryParams, $headers);
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Response', [
-                'url' => $url,
-                'status' => $response['http_status'] ?? null,
-                'count' => is_array($response) ? count($response) : 0,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Response', [
+            'url' => $url,
+            'status' => $response['http_status'] ?? null,
+            'count' => is_array($response) ? count($response) : 0,
+        ]);
 
         $this->checkResponseError($response, 'GET orders');
 
@@ -92,21 +82,17 @@ class WooCommerceOrder implements OrderInterface
         $url = $this->getApiUrl("orders/{$orderId}");
         $headers = $this->getAuthHeaders();
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Request', [
-                'method' => 'GET',
-                'url' => $url,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Request', [
+            'method' => 'GET',
+            'url' => $url,
+        ]);
 
         $response = $this->http->get($url, [], $headers);
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Response', [
-                'url' => $url,
-                'status' => $response['http_status'] ?? null,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Response', [
+            'url' => $url,
+            'status' => $response['http_status'] ?? null,
+        ]);
 
         $this->checkResponseError($response, "GET order {$orderId}");
 
@@ -173,24 +159,20 @@ class WooCommerceOrder implements OrderInterface
             return false;
         }
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Request', [
-                'method' => 'PUT',
-                'url' => $url,
-                'body' => $body,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Request', [
+            'method' => 'PUT',
+            'url' => $url,
+            'body' => $body,
+        ]);
 
         $response = $this->http->post($url, $body, array_merge($headers, [
             'X-HTTP-Method-Override' => 'PUT',
         ]));
 
-        if ($this->logger) {
-            $this->logger->debug('WooCommerce API Response', [
-                'url' => $url,
-                'status' => $response['http_status'] ?? null,
-            ]);
-        }
+        $this->log('debug', 'WooCommerce API Response', [
+            'url' => $url,
+            'status' => $response['http_status'] ?? null,
+        ]);
 
         $this->checkResponseError($response, "PUT order {$orderId}");
 
@@ -230,13 +212,11 @@ class WooCommerceOrder implements OrderInterface
             $code = $response['code'] ?? 'unknown';
             $message = $response['message'] ?? 'Unknown WooCommerce API error';
 
-            if ($this->logger) {
-                $this->logger->error("WooCommerce API error during {$context}", [
-                    'http_status' => $httpStatus,
-                    'code' => $code,
-                    'message' => $message,
-                ]);
-            }
+            $this->log('error', "WooCommerce API error during {$context}", [
+                'http_status' => $httpStatus,
+                'code' => $code,
+                'message' => $message,
+            ]);
 
             throw new \RuntimeException(
                 "WooCommerce API error [{$httpStatus}]: {$message}",

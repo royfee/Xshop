@@ -37,4 +37,19 @@ interface OrderInterface
      * @return bool
      */
     public function send(string $orderId, array $params): bool;
+
+    /**
+     * 获取打印面单
+     *
+     * 单号统一格式: 订单号|运单号 (运单号可省略)，支持字符串或数组批量。
+     * 返回值固定为 ['html' => string, 'raw' => array]:
+     *   - html: 面单 HTML，可直接 echo 输出打印
+     *   - raw : 平台原始响应 (平台直出 HTML、无附加信息时为 [])
+     * 不支持打印面单的平台返回空数组 []。
+     *
+     * @param string|array $param 单号，如 "H261108512201-B2070001|8287048424" 或其数组
+     * @param array $options 打印参数，如 ['paperSize' => 'A5']
+     * @return array ['html' => string, 'raw' => array]，不支持的平台返回 []
+     */
+    public function getLabel($param, array $options = []): array;
 }

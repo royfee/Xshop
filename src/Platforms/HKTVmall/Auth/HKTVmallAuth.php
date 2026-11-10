@@ -5,6 +5,7 @@ namespace Royfee\XShop\Platforms\HKTVmall\Auth;
 use Royfee\XShop\Contracts\AuthInterface;
 use Royfee\XShop\Cache\Cache;
 use Psr\Log\LoggerInterface;
+use Royfee\XShop\Support\LoggerAwareTrait;
 
 /**
  * HKTVmall RS256 JWT Authentication
@@ -16,12 +17,13 @@ use Psr\Log\LoggerInterface;
  */
 class HKTVmallAuth implements AuthInterface
 {
+    use LoggerAwareTrait;
+
     /** 距过期不足该秒数时视为需要重新签发 */
     const REFRESH_MARGIN = 120;
 
     protected $config;
     protected $cache;
-    protected $logger;
     protected $platform = 'hktvmall';
     protected $tokenTtl = 1200;
 
@@ -214,13 +216,6 @@ class HKTVmallAuth implements AuthInterface
     protected function base64UrlEncode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-    }
-
-    protected function log(string $level, string $message, array $context = []): void
-    {
-        if ($this->logger) {
-            $this->logger->$level($message, $context);
-        }
     }
 
     public function clearToken(): void

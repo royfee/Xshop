@@ -4,22 +4,22 @@ namespace Royfee\XShop\Platforms\HKTVmall\Api;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Royfee\XShop\Contracts\OrderInterface;
-use Royfee\XShop\Contracts\HttpClientInterface;
-use Royfee\XShop\Platforms\HKTVmall\Auth\HKTVmallAuth;
-use Royfee\XShop\Platforms\HKTVmall\HKTVmall;
-use Royfee\XShop\Platforms\HKTVmall\Mapper\HKTVmallOrderMapper;
-use Royfee\XShop\Data\XOrder;
 use Psr\Log\LoggerInterface;
+use Royfee\XShop\Contracts\HttpClientInterface;
+use Royfee\XShop\Contracts\OrderInterface;
+use Royfee\XShop\Contracts\PlatformInterface;
+use Royfee\XShop\Data\XOrder;
+use Royfee\XShop\Mapper\AbstractMapper;
+use Royfee\XShop\Platforms\AbstractApiResource;
+use Royfee\XShop\Platforms\HKTVmall\Auth\HKTVmallAuth;
+use Royfee\XShop\Platforms\HKTVmall\Mapper\HKTVmallOrderMapper;
 
-class HKTVmallOrder implements OrderInterface
+/**
+ * HKTVmall 订单接口 (Shoalter 开放网关, RS256 JWT 鉴权)
+ */
+class HKTVmallOrder extends AbstractApiResource implements OrderInterface
 {
-    protected $config;
-    protected $http;
-    protected $auth;
-    protected $logger;
-    protected $mapper;
-    protected $platform;
+    /** @var Client 需要发送带 body 的 GET 请求，统一客户端不支持，暂用原生 Guzzle */
     protected $guzzle;
 
     public function __construct(
@@ -27,20 +27,20 @@ class HKTVmallOrder implements OrderInterface
         HttpClientInterface $http,
         HKTVmallAuth $auth,
         ?LoggerInterface $logger = null,
-        ?HKTVmall $platform = null
+        ?PlatformInterface $platform = null
     ) {
-        $this->config = $config;
-        $this->http = $http;
-        $this->auth = $auth;
-        $this->logger = $logger;
-        $this->mapper = new HKTVmallOrderMapper();
-        $this->platform = $platform;
+        parent::__construct($config, $http, $auth, $logger, $platform);
 
         $this->guzzle = new Client([
             'timeout' => $config['timeout'] ?? 30,
             'connect_timeout' => $config['connect_timeout'] ?? 10,
             'http_errors' => false,
         ]);
+    }
+
+    protected function createMapper(): AbstractMapper
+    {
+        return new HKTVmallOrderMapper();
     }
 
     protected function getBaseUrl(): string
@@ -64,17 +64,19 @@ class HKTVmallOrder implements OrderInterface
     }
 
     /**
-     * 发送 GET 请求并携带 JSON body（与 Shoalter 文档 curl 一致）
+     * 发送携带 JSON body 的请求 (GET 时与 Shoalter 文档 curl 一致；POST 用于面单等接口)
+     *
+     * @return array 解析后的响应；非 JSON 响应 (如面单 HTML) 放在 raw_body 键下
      */
-    protected function sendGetWithBody(string $url, array $body, array $headers): array
+    protected function sendWithBody(string $method, string $url, array $body, array $headers): array
     {
-        $this->log('debug', 'HKTVmall API GET (with body) Request', [
+        $this->log('debug', 'HKTVmall API ' . $method . ' (with body) Request', [
             'url' => $url,
             'body' => $body,
         ]);
 
         try {
-            $response = $this->guzzle->request('GET', $url, [
+            $response = $this->guzzle->request($method, $url, [
                 'headers' => $headers,
                 'body' => json_encode($body),
             ]);
@@ -85,7 +87,10 @@ class HKTVmallOrder implements OrderInterface
             $this->log('debug', 'HKTVmall API Response', [
                 'url' => $url,
                 'http_status' => $statusCode,
-                'body' => $responseBody,
+                // 面单 HTML 可达数十 KB，截断避免日志膨胀
+                'body' => strlen($responseBody) > 2000
+                    ? substr($responseBody, 0, 2000) . '... [共 ' . strlen($responseBody) . ' 字节]'
+                    : $responseBody,
             ]);
 
             $data = json_decode($responseBody, true);
@@ -126,17 +131,12 @@ class HKTVmallOrder implements OrderInterface
      */
     public function getList(array $params = []): array
     {
-        if ($this->platform) {
-            $params = $this->platform->mapParams($params);
-        }
-
-        $body = $this->buildListBody($params);
+        $body = $this->buildListBody($this->prepareParams($params));
         $url = $this->getBaseUrl() . '/oapi/api/order/orders';
         $headers = $this->getCommonHeaders();
 
-        $response = $this->sendGetWithBody($url, $body, $headers);
+        $response = $this->sendWithBody('GET', $url, $body, $headers);
         $this->checkResponseError($response, 'getList');
-
 
         $subOrderNumbers = $this->extractSubOrderNumbers($response);
 
@@ -167,7 +167,7 @@ class HKTVmallOrder implements OrderInterface
         $url = $this->getBaseUrl() . '/oapi/api/order/details';
         $headers = $this->getCommonHeaders();
 
-        $response = $this->sendGetWithBody($url, $body, $headers);
+        $response = $this->sendWithBody('GET', $url, $body, $headers);
 
         $this->checkResponseError($response, 'getDetail');
 
@@ -195,7 +195,7 @@ class HKTVmallOrder implements OrderInterface
         $url = $this->getBaseUrl() . '/oapi/api/order/details';
         $headers = $this->getCommonHeaders();
 
-        $response = $this->sendGetWithBody($url, $body, $headers);
+        $response = $this->sendWithBody('GET', $url, $body, $headers);
 
         $this->checkResponseError($response, 'getDetails');
 
@@ -226,6 +226,89 @@ class HKTVmallOrder implements OrderInterface
         }
 
         return $result;
+    }
+
+    /**
+     * 获取打印面单 (POST /oapi/api/order/printWaybills/html)
+     *
+     * 单号格式 "订单号|运单号"，运单号可省略；支持字符串或数组批量，
+     * 可与 getList 组合使用:
+     *   $orders = $hktv->order()->getList($params);
+     *   $lines  = array_map(fn($o) => $o->platformOrderNo . '|' . $o->trackingNo, $orders);
+     *   $label  = $hktv->order()->getLabel($lines);
+     *   echo $label['html'];
+     *
+     * @param string|array $param 单号或单号数组
+     * @param array $options 打印参数，如 ['paperSize' => 'A4']，其余键透传给平台
+     * @return array ['html' => string 面单 HTML, 'raw' => array 平台原始响应]
+     */
+    public function getLabel($param, array $options = []): array
+    {
+        [$numbers, $waybills] = $this->parseLabelLines($param);
+
+        $body = array_merge($options, [
+            'waybill'         => implode(',', $waybills),
+            'suborderNumbers' => implode(',', $numbers),
+            'paperSize'       => $options['paperSize'] ?? $options['paper_size'] ?? 'A5',
+        ]);
+        unset($body['paper_size']);
+
+        $url = $this->getBaseUrl() . '/oapi/api/order/printWaybills/html';
+        $headers = $this->getCommonHeaders();
+        $headers['Accept'] = 'text/html, application/json';
+
+        $response = $this->sendWithBody('POST', $url, $body, $headers);
+        $httpStatus = (int) ($response['http_status'] ?? 200);
+        unset($response['http_status']);
+
+        // 网关直出 HTML 时没有其它附加信息，raw 为空
+        if (isset($response['raw_body'])) {
+            $html = (string) $response['raw_body'];
+            $this->checkRawResponseError($httpStatus, $html, 'getLabel');
+            return ['html' => $html, 'raw' => []];
+        }
+
+        // 网关返回 JSON 信封: {"code":"success","message":null,"data":"<!DOCTYPE html>..."}
+        $response['http_status'] = $httpStatus;
+        $this->checkResponseError($response, 'getLabel');
+
+        $data = $response['data'] ?? null;
+        if (!is_string($data) || $data === '') {
+            throw new \RuntimeException(
+                'HKTVmall getLabel: 接口未返回面单 HTML，响应: '
+                . substr(json_encode($response, JSON_UNESCAPED_UNICODE), 0, 500)
+            );
+        }
+
+        return ['html' => $data, 'raw' => $response];
+    }
+
+    /**
+     * 解析 "订单号|运单号" 形式的单号，返回 [订单号数组, 运单号数组]
+     *
+     * @param string|array $param
+     * @return array
+     */
+    protected function parseLabelLines($param): array
+    {
+        $lines = is_array($param) ? $param : (is_string($param) ? [$param] : []);
+
+        $numbers = [];
+        $waybills = [];
+        foreach ($lines as $line) {
+            $parts = explode('|', trim((string) $line));
+            if ($parts[0] === '') {
+                continue;
+            }
+            $numbers[] = $parts[0];
+            $waybills[] = trim($parts[1] ?? '');
+        }
+
+        if (empty($numbers)) {
+            throw new \InvalidArgumentException('HKTVmall getLabel: 订单号不能为空');
+        }
+
+        return [$numbers, $waybills];
     }
 
     public function send(string $orderId, array $params): bool
@@ -308,6 +391,22 @@ class HKTVmallOrder implements OrderInterface
         return [];
     }
 
+    /**
+     * 面单接口返回非 JSON 内容时的错误判断 (正常为 HTML，异常时为网关错误页)
+     */
+    protected function checkRawResponseError(int $httpStatus, string $body, string $context): void
+    {
+        if ($httpStatus < 400) {
+            return;
+        }
+
+        $body = trim($body);
+        $this->checkResponseError([
+            'http_status' => $httpStatus,
+            'message'     => $body === '' ? 'Empty response body' : substr($body, 0, 500),
+        ], $context);
+    }
+
     protected function checkResponseError(array $response, string $context): void
     {
         $httpStatus = $response['http_status'] ?? 200;
@@ -362,13 +461,6 @@ class HKTVmallOrder implements OrderInterface
                     is_numeric($apiCode) ? (int) $apiCode : 0
                 );
             }
-        }
-    }
-
-    protected function log(string $level, string $message, array $context = []): void
-    {
-        if ($this->logger) {
-            $this->logger->$level($message, $context);
         }
     }
 }

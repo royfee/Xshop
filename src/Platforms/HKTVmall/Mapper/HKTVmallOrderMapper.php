@@ -82,9 +82,9 @@ class HKTVmallOrderMapper extends AbstractMapper
 
         $order->payType = (string) $this->get($rawData, 'deliveryMethod');
         $order->payTime = null;
-        $order->createTime = $this->formatTimeValue($this->get($rawData, 'orderDate'));
-        $order->sendTime = $this->formatTimeValue($this->get($rawData, 'pickUpDate'));
-        $order->receiveTime = $this->formatTimeValue($this->get($rawData, 'deliveryDate'));
+        $order->createTime = $this->toDateTime($this->get($rawData, 'orderDate'));
+        $order->sendTime = $this->toDateTime($this->get($rawData, 'pickUpDate'));
+        $order->receiveTime = $this->toDateTime($this->get($rawData, 'deliveryDate'));
 
         $order->receiverName = (string) $this->get($rawData, 'recipientName');
         $order->receiverPhone = (string) $this->get($rawData, 'contactPhoneNumber');
@@ -128,33 +128,5 @@ class HKTVmallOrderMapper extends AbstractMapper
         $item->outerNo = '';
 
         return $item;
-    }
-
-    protected function toFloat($value): float
-    {
-        if ($value === null || $value === '') {
-            return 0.0;
-        }
-        return round((float) $value, 2);
-    }
-
-    protected function formatTimeValue($value): ?string
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            return $this->formatTime($value);
-        }
-
-        if (is_string($value)) {
-            $ts = strtotime($value);
-            if ($ts !== false) {
-                return date('Y-m-d H:i:s', $ts);
-            }
-        }
-
-        return (string) $value;
     }
 }

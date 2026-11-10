@@ -60,6 +60,17 @@ abstract class AbstractMapper implements MapperInterface
     }
 
     /**
+     * 格式化金额 (元为单位，保留两位小数)
+     */
+    protected function toFloat($value): float
+    {
+        if ($value === null || $value === '') {
+            return 0.0;
+        }
+        return round((float) $value, 2);
+    }
+
+    /**
      * 格式化时间戳
      */
     protected function formatTime($timestamp): ?string
@@ -72,5 +83,24 @@ abstract class AbstractMapper implements MapperInterface
             $timestamp = (int) ($timestamp / 1000);
         }
         return date('Y-m-d H:i:s', (int) $timestamp);
+    }
+
+    /**
+     * 归一化平台时间字段 (秒/毫秒时间戳、ISO 或其它可被 strtotime 解析的字符串)
+     *
+     * @return string|null 'Y-m-d H:i:s'，无法解析时为 null
+     */
+    protected function toDateTime($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return $this->formatTime($value);
+        }
+
+        $timestamp = strtotime((string) $value);
+        return $timestamp === false ? null : date('Y-m-d H:i:s', $timestamp);
     }
 }

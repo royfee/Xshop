@@ -45,10 +45,10 @@ class WooCommerceOrderMapper extends AbstractMapper
         $order->discountAmount = $this->toFloat($this->get($rawData, 'total_discount'));
 
         $order->payType = $this->get($rawData, 'payment_method_title') ?: $this->get($rawData, 'payment_method');
-        $order->payTime = $this->formatIsoTime($this->get($rawData, 'date_paid'));
-        $order->createTime = $this->formatIsoTime($this->get($rawData, 'date_created'));
+        $order->payTime = $this->toDateTime($this->get($rawData, 'date_paid'));
+        $order->createTime = $this->toDateTime($this->get($rawData, 'date_created'));
         $order->sendTime = null;
-        $order->receiveTime = $this->formatIsoTime($this->get($rawData, 'date_completed'));
+        $order->receiveTime = $this->toDateTime($this->get($rawData, 'date_completed'));
 
         $this->mapBilling($order, $rawData);
         $this->mapShipping($order, $rawData);
@@ -187,25 +187,5 @@ class WooCommerceOrderMapper extends AbstractMapper
             }
         }
         return implode('; ', $specs);
-    }
-
-    protected function toFloat($value): float
-    {
-        if ($value === null || $value === '') {
-            return 0.0;
-        }
-        return round((float) $value, 2);
-    }
-
-    protected function formatIsoTime($datetime): ?string
-    {
-        if (empty($datetime)) {
-            return null;
-        }
-        $ts = strtotime($datetime);
-        if ($ts === false) {
-            return null;
-        }
-        return date('Y-m-d H:i:s', $ts);
     }
 }

@@ -6,16 +6,21 @@ use Royfee\XShop\Contracts\AuthInterface;
 use Royfee\XShop\Contracts\HttpClientInterface;
 use Royfee\XShop\Cache\Cache;
 use Psr\Log\LoggerInterface;
+use Royfee\XShop\Platforms\Pdd\PddErrorTrait;
+use Royfee\XShop\Support\LoggerAwareTrait;
 
 /**
  * 拼多多 OAuth 认证模块
- * 
+ *
  * 使用平台统一的 HTTP 客户端发送请求
- * 
+ *
  * Cache Key: token_pdd_{client_id}_{mall_id}
  */
 class PddAuth implements AuthInterface
 {
+    use LoggerAwareTrait;
+    use PddErrorTrait;
+
     /** @var array 配置 */
     protected $config;
 
@@ -195,60 +200,11 @@ class PddAuth implements AuthInterface
     }
 
     /**
-     * 检查响应中的错误
-     * 
-     * 拼多多错误响应格式:
-     * {
-     *   "error_response": {
-     *     "error_code": 70012,
-     *     "error_msg": "code已过期"
-     *   }
-     * }
-     * 
-     * 或:
-     * {
-     *   "error_response": {
-     *     "error_code": 70012,
-     *     "error_msg": "access_token已过期"
-     *   }
-     * }
+     * 错误日志附加当前店铺标识
      */
-    protected function checkResponseError(array $response, string $context): void
+    protected function errorContext(): array
     {
-        if (!isset($response['error_response'])) {
-            return;
-        }
-
-        $error = $response['error_response'];
-        $errorCode = $error['error_code'] ?? 0;
-        $errorMsg = $error['error_msg'] ?? 'Unknown error';
-
-        // 处理 Unicode 编码的错误信息 (如: code\u5df2\u8fc7\u671f)
-        $errorMsg = $this->decodeUnicode($errorMsg);
-
-        $this->log('error', "PDD API error during {$context}", [
-            'error_code' => $errorCode,
-            'error_msg' => $errorMsg,
-            'mall_id' => $this->mallId,
-        ]);
-
-        throw new \RuntimeException(
-            "PDD API error [{$errorCode}]: {$errorMsg}",
-            $errorCode
-        );
-    }
-
-    /**
-     * 解码 Unicode 转义字符
-     * 
-     * 将 \\uXXXX 格式的 Unicode 转义序列转换为实际字符
-     * 例如: "code\\u5df2\\u8fc7\\u671f" -> "code已过期"
-     */
-    protected function decodeUnicode(string $str): string
-    {
-        return preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', function ($matches) {
-            return mb_convert_encoding(pack('H*', $matches[1]), 'UTF-8', 'UCS-2BE');
-        }, $str);
+        return ['mall_id' => $this->mallId];
     }
 
     /**
@@ -327,16 +283,6 @@ class PddAuth implements AuthInterface
     {
         $token = $this->cache->get($this->buildCacheKey());
         return $token && is_array($token);
-    }
-
-    /**
-     * 记录日志
-     */
-    protected function log(string $level, string $message, array $context = []): void
-    {
-        if ($this->logger) {
-            $this->logger->$level($message, $context);
-        }
     }
 
     /**
